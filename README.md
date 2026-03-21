@@ -390,7 +390,3 @@ Brendon Scicluna
 
 MIT
 
-```
-
-Save that as `README.md` in the root of your GitHub repository.
-```
