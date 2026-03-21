@@ -45,17 +45,6 @@ These packaged datasets are used automatically by the classifier and do not need
 
 ---
 
-## Installation
-
-### Option 1: install from the packaged archive (`.tar.gz`)
-
-If you downloaded or uploaded the package as a source archive, install it in R using:
-
-```r
-install.packages("ctsSubtypeR_0.0.0.9000.tar.gz", repos = NULL, type = "source")
-
----
-
 ## Required input file type
 
 The package expects a **text-based gene expression table** that can be read into R as either:
@@ -100,3 +89,14 @@ The safest option is to use:
 
 ```r
 new_expr <- read.csv("your_new_data.csv", check.names = FALSE)
+
+---
+
+## Installation
+
+### Option 1: install from the packaged archive (`.tar.gz`)
+
+If you downloaded or uploaded the package as a source archive, install it in R using:
+
+```r
+install.packages("ctsSubtypeR_0.0.0.9000.tar.gz", repos = NULL, type = "source")
