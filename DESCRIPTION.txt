@@ -1,0 +1,15 @@
+usethis::use_description(fields = list(
+  Title = "Molecular Subtype Classification from Reference Gene Expression Data",
+  Description = paste(
+    "Classifies new samples into consensus transcriptomic subtypes (CTS)",
+    "using reference gene expression data, batch correction, and random",
+    "forest modelling. Supports a fourth CTS class representing a",
+    "health/null subtype for broader triage applications."
+  ),
+  `Authors@R` = 'person("Brendon", "Scicluna", email = "brendon.scicluna@um.edu.mt", role = c("aut", "cre"))',
+  License = "MIT + file LICENSE",
+  Encoding = "UTF-8",
+  LazyData = "true"
+))
+
+
