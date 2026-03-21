@@ -54,6 +54,7 @@ If you downloaded or uploaded the package as a source archive, install it in R u
 ```r
 install.packages("ctsSubtypeR_0.0.0.9000.tar.gz", repos = NULL, type = "source")
 
+---
 
 ## Required input file type
 
@@ -99,4 +100,3 @@ The safest option is to use:
 
 ```r
 new_expr <- read.csv("your_new_data.csv", check.names = FALSE)
-
