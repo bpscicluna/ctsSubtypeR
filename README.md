@@ -1,6 +1,10 @@
-# ConsensusTranscriptomicSubtype
 
-Classify patient samples into **Consensus Transcriptomic Subtypes (CTS)** of **sepsis** using packaged reference data, user-supplied healthy controls, **ComBat** normalization, and **random forest** classification.
+# ctsSubtypeR
+
+![R](https://img.shields.io/badge/R-%3E%3D%204.2-blue)
+![License: GPL-3](https://img.shields.io/badge/License-GPL--3-blue.svg)
+
+`ctsSubtypeR` is an R package for classifying patient samples into **Consensus Transcriptomic Subtypes (CTS)** of **sepsis** using packaged reference data, user-supplied healthy controls, **ComBat** normalization, and **random forest** classification.
 
 The current implementation supports four CTS groups:
 
@@ -32,14 +36,14 @@ User-provided healthy controls are incorporated during normalization to preserve
 ### From source archive
 
 ```r
-install.packages("ConsensusTranscriptomicSubtype_0.1.4.tar.gz", repos = NULL, type = "source")
+install.packages("ctsSubtypeR_0.0.0.9000.tar.gz", repos = NULL, type = "source")
 ````
 
 If the archive is in another folder:
 
 ```r
 install.packages(
-  "C:/path/to/ConsensusTranscriptomicSubtype_0.1.4.tar.gz",
+  "C:/path/to/ctsSubtypeR_0.0.0.9000.tar.gz",
   repos = NULL,
   type = "source"
 )
@@ -51,7 +55,7 @@ Use this only if the repository contains the full package source files.
 
 ```r
 # install.packages("remotes")
-remotes::install_github("bpscicluna/ConsensusTranscriptomicSubtype")
+remotes::install_github("bpscicluna/ctsSubtypeR")
 ```
 
 ---
@@ -59,7 +63,7 @@ remotes::install_github("bpscicluna/ConsensusTranscriptomicSubtype")
 ## Load the package
 
 ```r
-library(ConsensusTranscriptomicSubtype)
+library(ctsSubtypeR)
 ```
 
 ---
@@ -169,7 +173,7 @@ run_subtype_classifier(
 ## Quick start
 
 ```r
-library(ConsensusTranscriptomicSubtype)
+library(ctsSubtypeR)
 
 new_case_data <- read.csv("your_case_samples.csv", check.names = FALSE)
 new_healthy_data <- read.csv("your_healthy_controls.csv", check.names = FALSE)
@@ -257,7 +261,7 @@ result$plot_files
 ## Example workflow
 
 ```r
-library(ConsensusTranscriptomicSubtype)
+library(ctsSubtypeR)
 
 # Read user data
 new_case_data <- read.csv("your_case_samples.csv", check.names = FALSE)
@@ -352,4 +356,5 @@ This package is licensed under the **GNU General Public License v3.0 (GPL-3.0)**
 
 See the full license text in the [LICENSE](LICENSE) file.
 
+```
 ```
