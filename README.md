@@ -1,124 +1,115 @@
-# ctsSubtypeR
+````md
+# ConsensusTranscriptomicSubtype
 
-`ctsSubtypeR` is an R package for classifying new patient gene expression profiles into consensus transcriptomic subtypes (CTS) using packaged reference data, batch correction, and random forest modelling.
+<!-- Optional badges: update links once your repo is live -->
+![R](https://img.shields.io/badge/R-%3E%3D%204.2-blue)
+![License: GPL-3](https://img.shields.io/badge/License-GPL--3-blue.svg)
 
-The package currently supports four CTS groups:
+Classify patient samples into **Consensus Transcriptomic Subtypes (CTS)** of **sepsis** using packaged reference data, user-supplied healthy controls, **ComBat** normalization, and **random forest** classification.
+
+The current implementation supports four CTS groups:
 
 - **CTS1**
 - **CTS2**
 - **CTS3**
-- **CTS4**, defined here as a **health/null subtype**
+- **CTS4** — treated here as a **health/null subtype**
 
-The inclusion of CTS4 broadens the potential use of the framework beyond clearly diseased cohorts and may support future application in emergency medicine, screening, or primary care settings.
-
----
-
-## Overview
-
-`ctsSubtypeR` is designed to classify new transcriptomic profiles against an internal reference dataset packaged with the library. The workflow:
-
-1. loads the packaged reference expression matrix and subtype labels
-2. accepts user-supplied new expression data
-3. matches overlapping genes between reference and new data
-4. performs joint batch correction using `ComBat`
-5. trains a random forest classifier on the reference cohort
-6. predicts CTS labels for the new samples
-7. optionally generates a heatmap of classified samples
-8. returns subtype predictions, corrected matrices, and classification metrics
+User-provided healthy controls are incorporated during normalization to preserve healthy-versus-sepsis biology while reducing dataset-specific technical effects.
 
 ---
 
-## Package contents
+## Highlights
 
-The package includes:
-
-- **`run_subtype_classifier()`**  
-  Main function for classifying new samples
-
-- **`exp_core_g`**  
-  Packaged reference gene expression matrix
-
-- **`core_samples`**  
-  Packaged reference sample annotation data frame containing the `CTS` labels
-
-These packaged datasets are used automatically by the classifier and do not need to be supplied by the user.
+- Packaged reference expression matrix and subtype labels
+- Joint normalization of:
+  - packaged reference samples
+  - user healthy controls
+  - user case samples
+- CTS prediction with random forest classification
+- Optional heatmap generation
+- Optional silhouette calculation
+- Optional PDF export of heatmap and silhouette plots
 
 ---
 
 ## Installation
 
-### Option 1: install from the packaged archive (`.tar.gz`)
-
-If you downloaded or uploaded the package as a source archive, install it in R with:
+### From source archive
 
 ```r
-install.packages("ctsSubtypeR_0.0.0.9000.tar.gz", repos = NULL, type = "source")
+install.packages("ConsensusTranscriptomicSubtype_0.1.4.tar.gz", repos = NULL, type = "source")
 ````
 
-If the file is stored in another folder, provide the full path:
+If the archive is in another folder:
 
 ```r
-install.packages("C:/path/to/ctsSubtypeR_0.0.0.9000.tar.gz", repos = NULL, type = "source")
+install.packages(
+  "C:/path/to/ConsensusTranscriptomicSubtype_0.1.4.tar.gz",
+  repos = NULL,
+  type = "source"
+)
 ```
 
-### Option 2: install from GitHub source
+### From GitHub
 
-Use this only if the GitHub repository contains the full package source files such as `DESCRIPTION`, `NAMESPACE`, `R/`, `man/`, and `data/`.
+Use this only if the repository contains the full package source files.
 
 ```r
 # install.packages("remotes")
-remotes::install_github("bpscicluna/ctsSubtypeR")
+remotes::install_github("bpscicluna/ConsensusTranscriptomicSubtype")
 ```
 
 ---
 
-## Loading the package
-
-After installation, load the package in R:
+## Load the package
 
 ```r
-library(ctsSubtypeR)
+library(ConsensusTranscriptomicSubtype)
 ```
 
 ---
 
-## Required input file type
+## Packaged reference data
 
-The package expects a gene expression table that can be read into R as either:
+The package includes:
 
-* a **CSV file** (`.csv`)
-* a **tab-delimited text file** (`.txt` or `.tsv`)
-* an **R matrix**
-* an **R data frame**
+* `exp_core_g` — reference gene expression matrix
+* `core_samples` — reference sample annotations containing CTS labels
 
-For most users, the recommended format is a **CSV file** with:
-
-* genes in **rows**
-* samples in **columns**
-* the first column containing **gene identifiers**
+These datasets are loaded automatically by the classifier.
 
 ---
 
-## Input data format
+## Input requirements
 
-The function expects **gene expression data with genes in rows and samples in columns**.
+The classifier expects **two user-provided datasets**:
+
+* `new_case_data` — gene expression data for the samples to classify
+* `new_healthy_data` — gene expression data for healthy control samples
+
+### Accepted input types
+
+Input can be provided as:
+
+* `.csv`
+* `.txt`
+* `.tsv`
+* `data.frame`
+* `matrix`
 
 ### Required structure
+
+For both `new_case_data` and `new_healthy_data`:
 
 * genes in **rows**
 * samples in **columns**
 * expression values must be numeric
-* gene identifiers should be supplied either:
+* gene identifiers supplied either:
 
-  * in the **first column** of the file, or
-  * as **row names** after import into R
+  * in the **first column**, or
+  * as **row names**
 
-### Recommended gene identifier type
-
-Gene identifiers should match those used in the packaged reference data.
-The safest option is to use:
-
-* **Ensembl gene IDs**
+**Preferred identifier format:** Ensembl gene IDs
 
 ### Example input table
 
@@ -130,24 +121,20 @@ The safest option is to use:
 
 ---
 
-## Reading the input file
+## Read input files
 
-### CSV file
+### CSV
 
 ```r
-new_expr <- read.csv("your_new_data.csv", check.names = FALSE)
+new_case_data <- read.csv("your_case_samples.csv", check.names = FALSE)
+new_healthy_data <- read.csv("your_healthy_controls.csv", check.names = FALSE)
 ```
 
-### Tab-delimited file
+### Tab-delimited
 
 ```r
-new_expr <- read.delim("your_new_data.tsv", check.names = FALSE)
-```
-
-or
-
-```r
-new_expr <- read.delim("your_new_data.txt", check.names = FALSE)
+new_case_data <- read.delim("your_case_samples.tsv", check.names = FALSE)
+new_healthy_data <- read.delim("your_healthy_controls.tsv", check.names = FALSE)
 ```
 
 ---
@@ -156,70 +143,90 @@ new_expr <- read.delim("your_new_data.txt", check.names = FALSE)
 
 ```r
 run_subtype_classifier(
-  new_expr_data,
+  new_case_data,
+  new_healthy_data,
   gene_list = NULL,
   make_heatmap = TRUE,
-  ntrees = 500
+  ntrees = 500,
+  save_plots = FALSE,
+  output_dir = ".",
+  heatmap_file = "CTS_heatmap.pdf",
+  silhouette_file = "CTS_silhouette.pdf"
 )
 ```
 
 ### Arguments
 
-* **`new_expr_data`**
-  A matrix or data frame containing the new samples to classify
-
-* **`gene_list`**
-  Optional vector of gene identifiers used to restrict the classifier to a predefined gene set. If `NULL`, all genes in the packaged reference dataset are considered.
-
-* **`make_heatmap`**
-  Logical value indicating whether a heatmap of classified samples should be generated
-
-* **`ntrees`**
-  Number of trees used in the random forest classifier
+| Argument           | Description                                                      |
+| ------------------ | ---------------------------------------------------------------- |
+| `new_case_data`    | Matrix or data frame containing the new case samples to classify |
+| `new_healthy_data` | Matrix or data frame containing new healthy control samples      |
+| `gene_list`        | Optional vector of genes to restrict the classifier              |
+| `make_heatmap`     | Logical indicating whether to generate a heatmap                 |
+| `ntrees`           | Number of trees for the random forest model                      |
+| `save_plots`       | Logical indicating whether to save plots as PDF files            |
+| `output_dir`       | Directory where plot files will be saved                         |
+| `heatmap_file`     | File name for the heatmap PDF                                    |
+| `silhouette_file`  | File name for the silhouette PDF                                 |
 
 ---
 
-## How to use the package
-
-### Basic usage
+## Quick start
 
 ```r
-library(ctsSubtypeR)
+library(ConsensusTranscriptomicSubtype)
 
-new_expr <- read.csv("your_new_data.csv", check.names = FALSE)
+new_case_data <- read.csv("your_case_samples.csv", check.names = FALSE)
+new_healthy_data <- read.csv("your_healthy_controls.csv", check.names = FALSE)
 
 result <- run_subtype_classifier(
-  new_expr_data = new_expr
+  new_case_data = new_case_data,
+  new_healthy_data = new_healthy_data
 )
 
 head(result$predictions)
 ```
 
-### Disable the heatmap
+---
+
+## Save heatmap and silhouette plot
 
 ```r
 result <- run_subtype_classifier(
-  new_expr_data = new_expr,
+  new_case_data = new_case_data,
+  new_healthy_data = new_healthy_data,
+  make_heatmap = TRUE,
+  save_plots = TRUE,
+  output_dir = "CTS_results",
+  heatmap_file = "cts_heatmap.pdf",
+  silhouette_file = "cts_silhouette.pdf"
+)
+
+result$plot_files
+```
+
+---
+
+## Additional examples
+
+### Disable heatmap generation
+
+```r
+result <- run_subtype_classifier(
+  new_case_data = new_case_data,
+  new_healthy_data = new_healthy_data,
   make_heatmap = FALSE
 )
 ```
 
-### Use a custom number of trees
-
-```r
-result <- run_subtype_classifier(
-  new_expr_data = new_expr,
-  ntrees = 1000
-)
-```
-
-### Restrict the classifier to a selected gene set
+### Use a custom gene set
 
 ```r
 selected_genes <- c("ENSG000001", "ENSG000002", "ENSG000003")
 
 result <- run_subtype_classifier(
-  new_expr_data = new_expr,
+  new_case_data = new_case_data,
+  new_healthy_data = new_healthy_data,
   gene_list = selected_genes
 )
 ```
@@ -228,66 +235,26 @@ result <- run_subtype_classifier(
 
 ## Output
 
-The function returns a list with the following components.
+The function returns a list containing:
 
-### `predictions`
+| Element                | Description                                                              |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `predictions`          | Predicted CTS labels for the new case samples                            |
+| `expression_corrected` | Corrected `reference`, `new_healthy`, and `new_case` matrices            |
+| `silhouette`           | Silhouette object for the predicted case samples, when applicable        |
+| `rf_model`             | Trained random forest model                                              |
+| `genes_used`           | Genes used in classification                                             |
+| `gene_overlap`         | Number of overlapping genes across reference, healthy, and case datasets |
+| `batch`                | Batch labels used during ComBat normalization                            |
+| `bio_group`            | Biological group labels used during ComBat normalization                 |
+| `plot_files`           | File paths of exported PDF plots, if saved                               |
 
-A data frame containing the predicted subtype for each sample.
+### Example output access
 
 ```r
 result$predictions
-```
-
-Typical structure:
-
-| sample_id | CTS |
-| --------- | --- |
-| sample_1  | 1   |
-| sample_2  | 4   |
-| sample_3  | 2   |
-
-### `expression_corrected`
-
-A list containing the batch-corrected expression matrices:
-
-* `core` = corrected packaged reference matrix
-* `new_data` = corrected new-sample matrix
-
-```r
-result$expression_corrected$core
-result$expression_corrected$new_data
-```
-
-### `silhouette`
-
-A silhouette object describing how consistently the predicted new samples group according to their assigned subtype.
-
-```r
-result$silhouette
-```
-
-### `rf_model`
-
-The fitted random forest model trained on the packaged reference data.
-
-```r
-result$rf_model
-```
-
-### `genes_used`
-
-A character vector containing the genes used in the classification after intersecting reference and new data.
-
-```r
-result$genes_used
-```
-
-### `gene_overlap`
-
-The number of overlapping genes between the packaged reference dataset and the new input data.
-
-```r
 result$gene_overlap
+result$plot_files
 ```
 
 ---
@@ -295,98 +262,102 @@ result$gene_overlap
 ## Example workflow
 
 ```r
-library(ctsSubtypeR)
+library(ConsensusTranscriptomicSubtype)
 
-# Read new expression data
-new_expr <- read.csv("your_new_data.csv", check.names = FALSE)
+# Read user data
+new_case_data <- read.csv("your_case_samples.csv", check.names = FALSE)
+new_healthy_data <- read.csv("your_healthy_controls.csv", check.names = FALSE)
 
-# Run classifier
+# Run classifier and save visual output
 result <- run_subtype_classifier(
-  new_expr_data = new_expr,
+  new_case_data = new_case_data,
+  new_healthy_data = new_healthy_data,
   make_heatmap = TRUE,
-  ntrees = 500
+  save_plots = TRUE,
+  output_dir = "CTS_results",
+  heatmap_file = "cts_heatmap.pdf",
+  silhouette_file = "cts_silhouette.pdf"
 )
 
-# View subtype predictions
-print(result$predictions)
+# View predicted classes
+result$predictions
 
-# Check overlap with reference genes
-print(result$gene_overlap)
-
-# Access corrected expression matrix for new samples
-head(result$expression_corrected$new_data)
+# View saved plot locations
+result$plot_files
 ```
 
 ---
 
-## Interpretation of CTS labels
+## Interpretation notes
 
-The package currently supports four CTS labels:
-
-* **CTS1**
-* **CTS2**
-* **CTS3**
-* **CTS4**
-
-Within the current framework, **CTS4** is treated as a **health/null subtype**. This does not necessarily imply absence of all biology, but rather a reference-like or non-disease-associated class within the current model.
+* **CTS4** is treated here as a **health/null subtype**
+* user healthy controls are incorporated during normalization
+* subtype classification is performed on the **new case samples**
+* healthy controls should ideally come from the same study, platform, or preprocessing workflow as the case samples
 
 ---
 
-## Important input considerations
+## Best practices
 
 For best performance:
 
-* gene identifiers in the new data should match those used in the packaged reference data
-* gene identifiers should ideally be Ensembl IDs
-* row names should contain gene IDs whenever possible
-* sample IDs should be unique
-* gene IDs should be unique
-* the new dataset must contain sufficient overlap with the reference gene set
+* use healthy controls from the same study or platform as the case samples
+* ensure gene identifiers match those used in the packaged reference data
+* use Ensembl gene IDs where possible
+* ensure sufficient overlap across:
 
-If too few overlapping genes are found, the function will stop and return an error.
+  * packaged reference data
+  * user healthy controls
+  * user case samples
+
+If gene overlap is too low, the function will stop with an error.
 
 ---
 
 ## Troubleshooting
 
-### “Too few overlapping genes between reference and new data”
+### Too few overlapping genes across reference, new cases, and new healthy controls
 
-Your input gene identifiers likely do not match the reference gene IDs used in the package.
+Check that:
 
-Check:
+* gene IDs were imported correctly
+* the first column containing gene IDs was not lost
+* Ensembl IDs are used consistently
 
-* whether you are using Ensembl IDs or gene symbols
-* whether row names were imported correctly
-* whether the first column containing genes was properly interpreted
+### `new_case_data` or `new_healthy_data` must have row names with gene IDs
 
-### “`new_expr_data` must have row names containing gene IDs”
+Make sure gene identifiers are supplied either:
 
-Make sure gene identifiers are stored as row names, or provide them in the first column of the data frame.
+* in the first column of the file, or
+* as row names after import
 
-### Heatmap is cluttered
+### No silhouette plot was saved
 
-For larger datasets, try:
+A silhouette plot is only produced when:
 
-```r
-result <- run_subtype_classifier(
-  new_expr_data = new_expr,
-  make_heatmap = FALSE
-)
-```
+* there are enough classified case samples
+* more than one predicted subtype is present
 
 ### Installation from `.tar.gz` fails on Windows
 
-You may need the appropriate R build tools installed if installing from source.
+You may need the appropriate R build tools installed.
 
 ---
 
-## Author
+## Contributing
 
-Brendon Scicluna
+Bug reports, suggestions, and pull requests are welcome.
+Please open an issue or pull request on GitHub.
 
 ---
 
 ## License
 
-MIT
+This package is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
 
+See the full license text in the [LICENSE](LICENSE) file.
+
+```
+
+A small finishing touch on GitHub is to replace the placeholder badge links with real ones once the repository is live.
+```
