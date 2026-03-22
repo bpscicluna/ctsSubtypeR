@@ -353,6 +353,3 @@ This package is licensed under the **GNU General Public License v3.0 (GPL-3.0)**
 See the full license text in the [LICENSE](LICENSE) file.
 
 ```
-
-A small finishing touch on GitHub is to replace the placeholder badge links with real ones once the repository is live.
-```
