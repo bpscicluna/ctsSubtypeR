@@ -1,9 +1,4 @@
-````md
 # ConsensusTranscriptomicSubtype
-
-<!-- Optional badges: update links once your repo is live -->
-![R](https://img.shields.io/badge/R-%3E%3D%204.2-blue)
-![License: GPL-3](https://img.shields.io/badge/License-GPL--3-blue.svg)
 
 Classify patient samples into **Consensus Transcriptomic Subtypes (CTS)** of **sepsis** using packaged reference data, user-supplied healthy controls, **ComBat** normalization, and **random forest** classification.
 
