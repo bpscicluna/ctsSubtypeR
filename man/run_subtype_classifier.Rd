@@ -2,34 +2,47 @@
 % Please edit documentation in R/run_subtype_classifier.R
 \name{run_subtype_classifier}
 \alias{run_subtype_classifier}
-\title{Classify new patients into molecular subtypes using packaged reference data}
+\title{Classify new patients into CTS using reference data and user healthy controls}
 \usage{
 run_subtype_classifier(
-  new_expr_data,
+  new_case_data,
+  new_healthy_data,
   gene_list = NULL,
   make_heatmap = TRUE,
-  ntrees = 500
+  ntrees = 500,
+  save_plots = FALSE,
+  output_dir = ".",
+  heatmap_file = "CTS_heatmap.pdf",
+  silhouette_file = "CTS_silhouette.pdf"
 )
 }
 \arguments{
-\item{new_expr_data}{Numeric expression matrix or data frame of new samples
-with genes in rows and samples in columns. If a data frame, it may contain
-a first column named \code{gene} holding gene IDs.}
+\item{new_case_data}{Matrix or data frame of new case samples; genes in rows,
+samples in columns.}
 
-\item{gene_list}{Optional character vector of classifier genes. If \code{NULL},
-all genes in the packaged reference dataset are used.}
+\item{new_healthy_data}{Matrix or data frame of new healthy control samples;
+genes in rows, samples in columns.}
 
-\item{make_heatmap}{Logical; whether to draw a heatmap of the classified
-new samples. Default is \code{TRUE}.}
+\item{gene_list}{Optional character vector of classifier genes.}
 
-\item{ntrees}{Number of trees for random forest. Default is \code{500}.}
+\item{make_heatmap}{Logical; whether to draw a heatmap of predicted case samples.}
+
+\item{ntrees}{Number of trees for random forest.}
+
+\item{save_plots}{Logical; whether to save heatmap and silhouette plots as PDF files.}
+
+\item{output_dir}{Directory in which PDF files should be saved.}
+
+\item{heatmap_file}{File name for the heatmap PDF.}
+
+\item{silhouette_file}{File name for the silhouette PDF.}
 }
 \value{
-A list containing predicted subtypes, corrected expression matrices,
-silhouette metrics, and the trained random forest model.
+A list containing predictions, corrected matrices, silhouette metrics,
+model objects, and output file paths.
 }
 \description{
-Uses bundled reference gene expression data and subtype labels to classify
-new samples into consensus transcriptomic subtypes (CTS). CTS group 4 is
-treated as a health/null subtype.
+Users must provide both new case samples and new healthy control samples.
+Healthy controls are used during batch correction to preserve healthy-vs-sepsis
+biology while adjusting for dataset-specific technical effects.
 }

@@ -11,6 +11,7 @@ A numeric matrix.
 exp_core_g
 }
 \description{
-Reference/core expression matrix with genes in rows and samples in columns.
+Packaged reference/core expression matrix with genes in rows and samples
+in columns.
 }
 \keyword{datasets}

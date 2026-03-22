@@ -11,7 +11,8 @@ A data frame.
 core_samples
 }
 \description{
-Sample annotation data frame for the reference/core cohort. Row names match
-\code{colnames(exp_core_g)} and the table contains a \code{CTS} column.
+Packaged sample annotation data frame for the reference/core cohort.
+Row names match \code{colnames(exp_core_g)} and the data frame contains a \code{CTS}
+column.
 }
 \keyword{datasets}
