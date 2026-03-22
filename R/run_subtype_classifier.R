@@ -1,128 +1,58 @@
-#' Classify new patients into molecular subtypes using packaged reference data
+#' Classify new patients into CTS using reference data and user healthy controls
 #'
-#' Uses bundled reference gene expression data and subtype labels to classify
-#' new samples into consensus transcriptomic subtypes (CTS). CTS group 4 is
-#' treated as a health/null subtype.
+#' Users must provide both new case samples and new healthy control samples.
+#' Healthy controls are used during batch correction to preserve healthy-vs-sepsis
+#' biology while adjusting for dataset-specific technical effects.
 #'
-#' @param new_expr_data Numeric expression matrix or data frame of new samples
-#'   with genes in rows and samples in columns. If a data frame, it may contain
-#'   a first column named `gene` holding gene IDs.
-#' @param gene_list Optional character vector of classifier genes. If `NULL`,
-#'   all genes in the packaged reference dataset are used.
-#' @param make_heatmap Logical; whether to draw a heatmap of the classified
-#'   new samples. Default is `TRUE`.
-#' @param ntrees Number of trees for random forest. Default is `500`.
+#' @param new_case_data Matrix or data frame of new case samples; genes in rows,
+#'   samples in columns.
+#' @param new_healthy_data Matrix or data frame of new healthy control samples;
+#'   genes in rows, samples in columns.
+#' @param gene_list Optional character vector of classifier genes.
+#' @param make_heatmap Logical; whether to draw a heatmap of predicted case samples.
+#' @param ntrees Number of trees for random forest.
+#' @param save_plots Logical; whether to save heatmap and silhouette plots as PDF files.
+#' @param output_dir Directory in which PDF files should be saved.
+#' @param heatmap_file File name for the heatmap PDF.
+#' @param silhouette_file File name for the silhouette PDF.
 #'
-#' @return A list containing predicted subtypes, corrected expression matrices,
-#'   silhouette metrics, and the trained random forest model.
+#' @return A list containing predictions, corrected matrices, silhouette metrics,
+#'   model objects, and output file paths.
 #' @export
-run_subtype_classifier <- function(new_expr_data,
+run_subtype_classifier <- function(new_case_data,
+                                   new_healthy_data,
                                    gene_list = NULL,
                                    make_heatmap = TRUE,
-                                   ntrees = 500) {
+                                   ntrees = 500,
+                                   save_plots = FALSE,
+                                   output_dir = ".",
+                                   heatmap_file = "CTS_heatmap.pdf",
+                                   silhouette_file = "CTS_silhouette.pdf") {
 
   data("exp_core_g", package = "ctsSubtypeR", envir = environment())
   data("core_samples", package = "ctsSubtypeR", envir = environment())
 
-  if (!exists("exp_core_g") || !exists("core_samples")) {
-    stop("Packaged datasets `exp_core_g` and/or `core_samples` not found.")
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
   }
 
-  if (!is.numeric(ntrees) || length(ntrees) != 1 || is.na(ntrees) || ntrees < 1) {
-    stop("`ntrees` must be a positive integer.")
-  }
-  ntrees <- as.integer(ntrees)
+  heatmap_path <- file.path(output_dir, heatmap_file)
+  silhouette_path <- file.path(output_dir, silhouette_file)
 
-  if (is.null(rownames(exp_core_g)) || anyDuplicated(rownames(exp_core_g))) {
-    stop("`exp_core_g` must have unique gene IDs as row names.")
-  }
-  if (is.null(colnames(exp_core_g)) || anyDuplicated(colnames(exp_core_g))) {
-    stop("`exp_core_g` must have unique sample IDs as column names.")
-  }
-  if (!is.data.frame(core_samples)) {
-    stop("`core_samples` must be a data.frame.")
-  }
-  if (!"CTS" %in% colnames(core_samples)) {
-    stop("`core_samples` must contain a column named `CTS`.")
-  }
-  if (is.null(rownames(core_samples)) || anyDuplicated(rownames(core_samples))) {
-    stop("`core_samples` must have unique row names matching `colnames(exp_core_g)`.")
-  }
-
-  missing_core_meta <- setdiff(colnames(exp_core_g), rownames(core_samples))
-  if (length(missing_core_meta) > 0) {
-    stop(
-      "These core samples are missing in `core_samples`: ",
-      paste(missing_core_meta, collapse = ", ")
-    )
-  }
-  core_samples <- core_samples[colnames(exp_core_g), , drop = FALSE]
-
-  cts <- as.factor(core_samples$CTS)
-  if (any(is.na(cts))) {
-    stop("`core_samples$CTS` contains missing values.")
-  }
-
-  valid_cts <- c("1", "2", "3", "4")
-  if (!all(as.character(cts) %in% valid_cts)) {
-    stop("`core_samples$CTS` must only contain: 1, 2, 3, or 4.")
-  }
-
-  cts <- droplevels(factor(as.character(cts)))
-  train_levels <- levels(cts)
-
-  if (is.data.frame(new_expr_data)) {
-    if ("gene" %in% colnames(new_expr_data)) {
-      rownames(new_expr_data) <- new_expr_data$gene
-      new_expr_data <- new_expr_data[, setdiff(colnames(new_expr_data), "gene"), drop = FALSE]
-    } else if (!is.numeric(new_expr_data[[1]])) {
-      rownames(new_expr_data) <- new_expr_data[[1]]
-      new_expr_data <- new_expr_data[, -1, drop = FALSE]
-    }
-    new_expr_data <- as.matrix(new_expr_data)
-  }
-
-  if (!is.matrix(new_expr_data)) {
-    stop("`new_expr_data` must be a matrix or data.frame.")
-  }
-  if (is.null(rownames(new_expr_data)) || anyDuplicated(rownames(new_expr_data))) {
-    stop("`new_expr_data` must have unique gene IDs as row names, or a gene column.")
-  }
-  if (is.null(colnames(new_expr_data)) || anyDuplicated(colnames(new_expr_data))) {
-    stop("`new_expr_data` must have unique sample IDs as column names.")
-  }
-
-  storage.mode(exp_core_g) <- "numeric"
-  storage.mode(new_expr_data) <- "numeric"
-
-  if (is.null(gene_list)) {
-    gene_list <- rownames(exp_core_g)
-  } else {
-    gene_list <- unique(as.character(gene_list))
-  }
-
-  genes_use <- intersect(gene_list, rownames(exp_core_g))
-  genes_use <- intersect(genes_use, rownames(new_expr_data))
-
-  if (length(genes_use) < 10) {
-    stop("Too few overlapping genes between reference and new data: ", length(genes_use), ".")
-  }
-
-  exp_core_sub <- exp_core_g[genes_use, , drop = FALSE]
-  new_data_sub <- new_expr_data[genes_use, , drop = FALSE]
-
-  exp_all_m <- cbind(exp_core_sub, new_data_sub)
-  batch <- c(rep("core", ncol(exp_core_sub)), rep("new", ncol(new_data_sub)))
-
-  exp_all_combat <- sva::ComBat(
-    dat = exp_all_m,
-    batch = batch,
-    par.prior = TRUE,
-    prior.plots = FALSE
+  norm_res <- normalize_with_healthy_combat(
+    exp_core_g = exp_core_g,
+    core_samples = core_samples,
+    new_case_data = new_case_data,
+    new_healthy_data = new_healthy_data,
+    gene_list = gene_list
   )
 
-  exp_core_combat <- exp_all_combat[, colnames(exp_core_sub), drop = FALSE]
-  exp_new_combat <- exp_all_combat[, colnames(new_data_sub), drop = FALSE]
+  exp_core_combat <- norm_res$corrected$reference
+  exp_case_combat <- norm_res$corrected$new_case
+
+  core_samples <- core_samples[colnames(exp_core_combat), , drop = FALSE]
+  cts <- droplevels(factor(as.character(core_samples$CTS)))
+  train_levels <- levels(cts)
 
   train_df <- as.data.frame(t(exp_core_combat))
   train_df$CTS <- cts
@@ -130,29 +60,39 @@ run_subtype_classifier <- function(new_expr_data,
   rf <- randomForest::randomForest(
     CTS ~ .,
     data = train_df,
-    ntree = ntrees,
+    ntree = as.integer(ntrees),
     proximity = TRUE
   )
 
-  pred_new <- stats::predict(rf, newdata = as.data.frame(t(exp_new_combat)))
-  pred_new <- factor(as.character(pred_new), levels = train_levels)
+  pred_case <- stats::predict(rf, newdata = as.data.frame(t(exp_case_combat)))
+  pred_case <- factor(as.character(pred_case), levels = train_levels)
 
   pred_df <- data.frame(
-    sample_id = colnames(exp_new_combat),
-    CTS = pred_new
+    sample_id = colnames(exp_case_combat),
+    CTS = pred_case
   )
 
   if (isTRUE(make_heatmap)) {
     ordered_pred_df <- pred_df[order(pred_df$CTS), , drop = FALSE]
     rownames(ordered_pred_df) <- ordered_pred_df$sample_id
-    exp_new_ordered <- exp_new_combat[, ordered_pred_df$sample_id, drop = FALSE]
+    exp_case_ordered <- exp_case_combat[, ordered_pred_df$sample_id, drop = FALSE]
 
     ann_colors <- list(
-      CTS = c("1" = "royalblue", "2" = "#B2DF8A", "3" = "orange", "4" = "grey70")
+      CTS = c(
+        "1" = "royalblue",
+        "2" = "#B2DF8A",
+        "3" = "orange",
+        "4" = "grey70"
+      )
     )
 
+    if (isTRUE(save_plots)) {
+      grDevices::pdf(heatmap_path, width = 9, height = 11)
+      on.exit(grDevices::dev.off(), add = TRUE)
+    }
+
     pheatmap::pheatmap(
-      exp_new_ordered,
+      exp_case_ordered,
       color = grDevices::colorRampPalette(
         rev(RColorBrewer::brewer.pal(11, "PuOr"))
       )(50),
@@ -167,30 +107,51 @@ run_subtype_classifier <- function(new_expr_data,
       treeheight_row = 0,
       border_color = NA
     )
+
+    if (isTRUE(save_plots)) {
+      grDevices::dev.off()
+    }
   }
 
   sil <- NULL
-  keep <- !is.na(pred_new)
-  if (sum(keep) > 2 && length(unique(pred_new[keep])) > 1) {
-    rf_new <- randomForest::randomForest(
-      x = as.data.frame(t(exp_new_combat[, keep, drop = FALSE])),
-      y = droplevels(pred_new[keep]),
-      ntree = ntrees,
+  silhouette_saved <- FALSE
+
+  keep <- !is.na(pred_case)
+  if (sum(keep) > 2 && length(unique(pred_case[keep])) > 1) {
+    rf_case <- randomForest::randomForest(
+      x = as.data.frame(t(exp_case_combat[, keep, drop = FALSE])),
+      y = droplevels(pred_case[keep]),
+      ntree = as.integer(ntrees),
       proximity = TRUE
     )
 
     sil <- cluster::silhouette(
-      as.integer(droplevels(pred_new[keep])),
-      stats::as.dist(1 - rf_new$proximity)
+      as.integer(droplevels(pred_case[keep])),
+      stats::as.dist(1 - rf_case$proximity)
     )
+
+    if (isTRUE(save_plots)) {
+      grDevices::pdf(silhouette_path, width = 8, height = 6)
+      plot(sil,
+           main = "Silhouette plot of predicted CTS classes",
+           col = c("royalblue", "#B2DF8A", "orange", "grey70"))
+      grDevices::dev.off()
+      silhouette_saved <- TRUE
+    }
   }
 
   list(
     predictions = pred_df,
-    expression_corrected = list(core = exp_core_combat, new_data = exp_new_combat),
+    expression_corrected = norm_res$corrected,
     silhouette = sil,
     rf_model = rf,
-    genes_used = genes_use,
-    gene_overlap = length(genes_use)
+    genes_used = norm_res$genes_used,
+    gene_overlap = length(norm_res$genes_used),
+    batch = norm_res$batch,
+    bio_group = norm_res$bio_group,
+    plot_files = list(
+      heatmap = if (isTRUE(save_plots) && isTRUE(make_heatmap)) heatmap_path else NULL,
+      silhouette = if (silhouette_saved) silhouette_path else NULL
+    )
   )
 }
